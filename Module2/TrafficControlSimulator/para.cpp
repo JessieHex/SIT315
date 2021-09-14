@@ -89,6 +89,8 @@ bool sort_by_count_desc(Counter i, Counter j)
 
 int n_records = N_LIGHTS * 12; // 12 records per hour for each light
 int n = 0;
+time_t start = -1;
+time_t end;
 void *consume(void *args)
 {
 
@@ -100,11 +102,14 @@ void *consume(void *args)
         {
             pthread_cond_wait(&canConsume, &lock);
         }
-        
+        Traffic t;
         for (size_t i = 0; i < buf_idx; i++)
         {
-            Traffic t = data[i];
-            time_t start = t.timestamp;
+            t = data[i];
+            if (start == -1)
+            {
+                start = t.timestamp;
+            }
             if (n < n_records)
             {
                 traffic_counter[t.id].count += t.car_count;
@@ -114,7 +119,7 @@ void *consume(void *args)
             if (n == n_records)
             {
                 std::sort(std::begin(traffic_counter), std::end(traffic_counter), sort_by_count_desc);
-                time_t end = t.timestamp;
+                end = t.timestamp;
                 char buffer[32];
                 std::tm * ptm = std::localtime(&start);
                 std::strftime(buffer, 32, "%d-%m-%Y %H:%M:%S", ptm);
@@ -133,6 +138,7 @@ void *consume(void *args)
                 traffic_counter[i].count = 0;
                 }
                 n = 0;
+                start = -1;
                 break;
             }
         }
@@ -143,10 +149,6 @@ void *consume(void *args)
 
     return NULL;
 }
-
-
-
-
 
 int main()
 {
@@ -181,32 +183,4 @@ int main()
     {
         pthread_join(consumers[i], NULL);
     }
-    
-
-    
-
-    // Traffic *t = traffic_data.front();
-    // time_t start = t -> timestamp;
-    // while (t -> timestamp - start < 60 * 60)
-    // {
-    //     traffic_counter[t -> id].count += t -> car_count;
-    //     traffic_data.pop();
-    //     t = traffic_data.front();
-    // }
-    
-    // std::sort(std::begin(traffic_counter), std::end(traffic_counter), sort_by_count_desc);
-
-    // time_t end = t -> timestamp;
-    // char buffer[32];
-    // std::tm * ptm = std::localtime(&start);
-    // std::strftime(buffer, 32, "%d-%m-%Y %H:%M:%S", ptm);
-    // std::cout << "from " << buffer << " to ";
-    // ptm = std::localtime(&end);
-    // std::strftime(buffer, 32, "%d-%m-%Y %H:%M:%S", ptm);
-    // std::cout << buffer << "\n";
-    // std::cout << "The most congested traffic are at \n";
-    // for (int i = 0; i < N; i++)
-    // {
-    //     std::cout << "id: " << traffic_counter[i].id << " number of cars " << traffic_counter[i].count << "\n";
-    // }
 }
